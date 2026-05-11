@@ -311,7 +311,7 @@ body{background:white}
 </div>
 <div class="helper-text">각 주차 일평균 방문자 (모르면 비워두기 - 그래프 자동 보간)</div>
 
-<div class="section-title">3-2. 검색 유입 TOP 5 키워드</div>
+<div class="section-title"><span>3-2. 검색 유입 TOP 5 키워드</span><button class="action-btn outline" id="btn-fill-traffic-kw" type="button">⚡ 키워드 5개에서 복사</button></div>
 <div class="helper-text" style="margin-bottom:8px;">네이버 통계 → 유입분석에서 상위 키워드 + 유입 횟수</div>
 <div class="keyword-row" style="padding:8px;">
 <div class="field-row" style="grid-template-columns:2fr 1fr;">
@@ -345,7 +345,7 @@ body{background:white}
 </div>
 
 
-<div class="section-title">4. 콘텐츠 성과 TOP 3 + 부진 1편</div>
+<div class="section-title"><span>4. 콘텐츠 성과 TOP 3 + 부진 1편</span><button class="action-btn outline" id="btn-fill-content" type="button">⚡ 자동 선정</button></div>
 <div class="subitem-row">
 <div class="row-label" style="color:var(--success);">🏆 TOP 1</div>
 <div class="field"><input type="text" id="top1-title" placeholder="글 제목"></div>
@@ -388,7 +388,7 @@ body{background:white}
 <div class="field"><label>월별 데이터 (콤마로 구분 · 가장 오래된 달부터)</label><textarea id="growth-data" placeholder="예: 0, 1, 2, 3, 5, 7" rows="2"></textarea></div>
 <div class="helper-text">예: 6개월 운영 시 "0, 1, 2, 3, 5, 7" → 시작 0개 → 1개월차 1개 → 6개월차 7개</div>
 
-<div class="section-title">6. 이번 달 발행 콘텐츠 (최대 16편)</div>
+<div class="section-title"><span>6. 이번 달 발행 콘텐츠 (최대 16편)</span><button class="action-btn outline" id="btn-fill-publish" type="button">⚡ 키워드 5개에서 12편 생성</button></div>
 <div class="helper-text" style="margin-bottom:8px;">한 줄에 한 글씩 · 형식: 제목 | MM/DD | 키워드</div>
 <div class="field"><textarea id="publish-list" rows="8" placeholder="여드름 흉터 치료법 5가지 | 05/03 | 분당 여드름흉터
 보톡스 가격 정직하게 공개합니다 | 05/05 | 정자동 보톡스
@@ -1275,6 +1275,175 @@ document.querySelectorAll('input,textarea').forEach(el=>{
 });
 document.querySelectorAll('.action-btn[data-kw]').forEach(btn=>{btn.addEventListener('click',()=>autoCheckRank(btn.dataset.kw))});
 document.getElementById('btn-fill-action').addEventListener('click',autoFillAction);
+
+// ====== 검색 유입 TOP 5: 키워드 5개에서 자동 복사 ======
+function autoFillTrafficKw(){
+  const items=[];
+  for(let i=1;i<=5;i++){
+    const name=val(`kw${i}-name`);
+    const rank=parseInt(val(`kw${i}-now`));
+    if(!name)continue;
+    // 순위가 높을수록(낮은 숫자) 추정 유입 회수 ↑
+    // 1위=300회, 5위=180회, 10위=80회, 20위=20회 정도 추정
+    let estimated;
+    if(!rank||rank<=0)estimated=10;
+    else if(rank<=5)estimated=Math.round(320-rank*30);
+    else if(rank<=10)estimated=Math.round(220-rank*15);
+    else if(rank<=20)estimated=Math.round(100-(rank-10)*7);
+    else estimated=10;
+    items.push({name,count:Math.max(estimated,5)});
+  }
+  if(items.length===0){showToast('먼저 키워드 5개를 입력해주세요','error');return}
+  items.sort((a,b)=>b.count-a.count);
+  items.forEach((it,i)=>{
+    if(i<5){setVal(`tk${i+1}-name`,it.name);setVal(`tk${i+1}-count`,it.count);}
+  });
+  // 빈 칸 비우기
+  for(let i=items.length+1;i<=5;i++){setVal(`tk${i}-name`,'');setVal(`tk${i}-count`,'');}
+  showToast(`키워드 ${items.length}개 → 검색 유입 추정치 자동 입력 완료 (※ 추정치, 실제 통계 확인 권장)`,'success');
+}
+document.getElementById('btn-fill-traffic-kw').addEventListener('click',autoFillTrafficKw);
+
+// ====== 콘텐츠 성과 TOP 3 + 부진 자동 선정 ======
+function autoFillContent(){
+  // 발행 리스트 파싱
+  const raw=val('publish-list');
+  const publishList=raw.split('\n').map(l=>l.trim()).filter(l=>l.length>0).map(l=>{
+    const parts=l.split('|').map(p=>p.trim());
+    return {title:parts[0]||l,date:parts[1]||'',keyword:parts[2]||''};
+  });
+
+  // 키워드 5개 + 순위 매핑
+  const kwMap={};
+  for(let i=1;i<=5;i++){
+    const name=val(`kw${i}-name`);
+    const rank=parseInt(val(`kw${i}-now`));
+    if(name)kwMap[name]={rank:isNaN(rank)?null:rank};
+  }
+
+  // 발행 리스트가 있으면 거기서 매칭, 없으면 키워드로 제목 생성
+  let topPicks=[];
+
+  if(publishList.length>0){
+    // 발행 글 중 키워드 매칭되는 것 우선, 순위 좋은 순
+    const scored=publishList.map(p=>{
+      let bestRank=null;
+      for(const kw in kwMap){
+        if(p.keyword&&p.keyword.includes(kw)||p.title.includes(kw)){
+          const r=kwMap[kw].rank;
+          if(r&&(bestRank==null||r<bestRank))bestRank=r;
+        }
+      }
+      return {...p,bestRank};
+    });
+    // 순위 좋은 3편 = TOP 3
+    const ranked=scored.filter(p=>p.bestRank!=null).sort((a,b)=>a.bestRank-b.bestRank);
+    const unranked=scored.filter(p=>p.bestRank==null);
+    topPicks=[...ranked,...unranked].slice(0,3);
+  }
+
+  // 발행 리스트 없거나 부족하면 키워드 기반 제목 생성
+  if(topPicks.length<3){
+    const kwList=Object.entries(kwMap).filter(([n,d])=>d.rank&&d.rank<=10).sort((a,b)=>a[1].rank-b[1].rank);
+    for(const [kw,d] of kwList){
+      if(topPicks.length>=3)break;
+      // 이미 있으면 스킵
+      if(topPicks.some(p=>p.title.includes(kw)))continue;
+      topPicks.push({
+        title:`${kw} 완벽 가이드 - 알아두면 좋은 5가지`,
+        keyword:kw,
+        bestRank:d.rank,
+        synthetic:true,
+      });
+    }
+  }
+
+  if(topPicks.length===0){
+    showToast('키워드 또는 발행 리스트를 먼저 입력해주세요','error');
+    return;
+  }
+
+  // TOP 3 채우기
+  const trophies=['🏆','🥈','🥉'];
+  const comments=[
+    '환자가 결정 직전 의문(부작용·통증·비용)을 정확히 짚는 기획. 댓글·공감 활발해 알고리즘 점수 상승.',
+    '진료 철학을 자연스럽게 담은 톤앤매너. 신뢰감 형성으로 체류시간 평균 1.8배.',
+    '키워드 의도와 본문이 정확히 매칭. 직접 검색 진입으로 이어져 노출이 안정적.',
+  ];
+  for(let i=0;i<3;i++){
+    if(i<topPicks.length){
+      const p=topPicks[i];
+      setVal(`top${i+1}-title`,p.title);
+      setVal(`top${i+1}-kw`,p.keyword||'');
+      setVal(`top${i+1}-rank`,p.bestRank?p.bestRank+'위':'-');
+      setVal(`top${i+1}-comment`,comments[i]+(p.synthetic?' (※ 가상 제목 - 실제 발행 글로 수정 필요)':''));
+    }
+  }
+
+  // 부진 글 자동 선정
+  const weakKw=Object.entries(kwMap).filter(([n,d])=>d.rank&&d.rank>10).sort((a,b)=>b[1].rank-a[1].rank);
+  if(weakKw.length>0){
+    const [kw,d]=weakKw[0];
+    // 발행 리스트에서 그 키워드 매칭되는 글 우선
+    const matched=publishList.find(p=>p.keyword&&p.keyword.includes(kw)||p.title.includes(kw));
+    setVal('weak-title',matched?matched.title:`${kw} 관련 글`);
+    setVal('weak-kw',kw);
+    setVal('weak-rank',d.rank+'위');
+    setVal('weak-comment',`키워드 경쟁 강도 대비 콘텐츠 차별화가 부족한 상태입니다. 다음 달 ${kw} 관련 환자 결정 직전 의문(비용·부작용·후기)을 정면으로 다루는 콘텐츠로 재작성 예정입니다.`);
+  } else if(Object.keys(kwMap).length>0){
+    // 부진 키워드 없으면 가장 높은 순위 키워드 = 우수, 부진 자리는 비움 안내
+    setVal('weak-title','이번 달 부진 콘텐츠 없음');
+    setVal('weak-kw','-');
+    setVal('weak-rank','-');
+    setVal('weak-comment','모든 핵심 키워드가 1페이지에 안착되어 별도 개선 대상은 없습니다. 다음 달 신규 키워드 확장에 집중합니다.');
+  }
+
+  showToast('콘텐츠 성과 자동 선정 완료. 코멘트는 케이스에 맞게 수정 권장','success');
+}
+document.getElementById('btn-fill-content').addEventListener('click',autoFillContent);
+
+// ====== 발행 리스트 자동 생성 (키워드 5개에서 12편) ======
+function autoFillPublish(){
+  const kws=[];
+  for(let i=1;i<=5;i++){
+    const name=val(`kw${i}-name`);
+    if(name)kws.push(name);
+  }
+  if(kws.length===0){showToast('먼저 키워드 5개를 입력해주세요','error');return}
+
+  // 키워드당 평균 2-3편씩, 총 12편 분배
+  // 키워드별 제목 템플릿 5종
+  const titleTemplates=[
+    kw=>`${kw} 완벽 가이드 - 알아두면 좋은 5가지`,
+    kw=>`${kw} 비용 정직하게 공개합니다`,
+    kw=>`${kw} 후기 - 환자분들이 가장 많이 물어보는 질문`,
+    kw=>`${kw}, 우리 원장님이 직접 설명드립니다`,
+    kw=>`${kw} 전 꼭 알아야 할 주의사항`,
+    kw=>`${kw} 비포애프터 케이스 정리`,
+    kw=>`${kw} 부작용과 대처법 솔직하게`,
+    kw=>`${kw}에 대한 흔한 오해 5가지`,
+  ];
+
+  // 12편 생성
+  const lines=[];
+  const today=new Date();
+  const year=today.getFullYear();
+  const month=parseInt((val('i-report-month')||'').split('-')[1])||today.getMonth()+1;
+  const daysInMonth=new Date(year,month,0).getDate();
+
+  // 발행 간격 (월 12편 = 약 2.5일마다)
+  for(let i=0;i<12;i++){
+    const kw=kws[i%kws.length];
+    const tmpl=titleTemplates[Math.floor(i/kws.length)%titleTemplates.length];
+    const day=Math.min(2+Math.round(i*(daysInMonth-3)/11),daysInMonth);
+    const dateStr=`${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}`;
+    lines.push(`${tmpl(kw)} | ${dateStr} | ${kw}`);
+  }
+
+  setVal('publish-list',lines.join('\n'));
+  showToast('12편 자동 생성 완료 ※ 실제 발행한 글 제목으로 수정 필수','success');
+}
+document.getElementById('btn-fill-publish').addEventListener('click',autoFillPublish);
 
 updatePreview();
 </script>
