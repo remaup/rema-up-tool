@@ -1,137 +1,170 @@
-// api/place-info.js
-// 네이버 플레이스 ID로 병원명/주소/카테고리 추출
-// 공식 API가 없어 m.place.naver.com 페이지를 파싱합니다.
-// 페이지 구조 변경 시 깨질 수 있어 여러 추출 전략을 시도합니다.
+// api/place-info.js (v3) - 다중 엔드포인트 + 강화 추출
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, error: 'POST 요청만 허용됩니다' });
+    return res.status(405).json({ ok: false, error: 'POST만 허용' });
   }
 
   const { placeId } = req.body || {};
+  if (!placeId) {
+    return res.status(400).json({ ok: false, error: '플레이스 번호를 입력해주세요' });
+  }
 
-  // 입력에서 숫자만 추출 (URL 통째로 붙여넣어도 동작)
-  const cleaned = extractPlaceId(placeId);
-  if (!cleaned) {
+  const debug = { attempts: [] };
+  let cleanedId = extractPlaceId(placeId);
+
+  // 단축/일반 URL이면 redirect 따라가기
+  if (!cleanedId && /^https?:\/\//i.test(placeId.trim())) {
+    try {
+      const r = await fetch(placeId.trim(), {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        redirect: 'follow',
+      });
+      const m = (r.url || '').match(/\/(\d{6,})/);
+      if (m) cleanedId = m[1];
+      debug.attempts.push({ step: 'redirect', finalUrl: (r.url||'').slice(0,150) });
+    } catch (e) {
+      debug.attempts.push({ step: 'redirect-error', error: String(e.message) });
+    }
+  }
+
+  if (!cleanedId) {
     return res.status(400).json({
       ok: false,
-      error: '올바른 플레이스 ID 또는 URL을 입력해주세요. 예: 1234567890 또는 https://map.naver.com/p/entry/place/1234567890',
+      error: '플레이스 ID 추출 실패',
+      debug,
     });
   }
 
-  try {
-    // 모바일 페이지가 봇 차단이 덜 깐깐함
-    const url = `https://m.place.naver.com/place/${cleaned}/home`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    });
+  // 다중 엔드포인트 시도
+  const endpoints = [
+    { url: `https://m.place.naver.com/hospital/${cleanedId}/home`, ua: 'mobile' },
+    { url: `https://m.place.naver.com/place/${cleanedId}/home`, ua: 'mobile' },
+    { url: `https://m.place.naver.com/restaurant/${cleanedId}/home`, ua: 'mobile' },
+    { url: `https://m.place.naver.com/beautysalon/${cleanedId}/home`, ua: 'mobile' },
+    { url: `https://pcmap.place.naver.com/hospital/${cleanedId}/home`, ua: 'desktop' },
+    { url: `https://pcmap.place.naver.com/place/${cleanedId}/home`, ua: 'desktop' },
+  ];
 
-    if (!response.ok) {
-      return res.status(502).json({
-        ok: false,
-        error: `네이버 응답 오류 (HTTP ${response.status}). ID가 잘못됐거나 네이버 측 차단일 수 있습니다.`,
+  let result = null;
+  for (const ep of endpoints) {
+    const ua = ep.ua === 'mobile'
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+    try {
+      const r = await fetch(ep.url, {
+        headers: {
+          'User-Agent': ua,
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+        redirect: 'follow',
       });
-    }
+      const html = r.ok ? await r.text() : '';
+      const att = { url: ep.url.replace(`/${cleanedId}/home`, '/.../home'), status: r.status, len: html.length };
 
-    const html = await response.text();
-
-    // ===== 추출 전략 (여러 개 시도, 하나라도 성공하면 사용) =====
-    let name = null;
-    let address = null;
-    let category = null;
-    let phone = null;
-
-    // 전략 1: og:title 메타 태그 (가장 안정적)
-    const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
-    if (ogTitleMatch) {
-      name = ogTitleMatch[1]
-        .replace(/\s*[:\-—]\s*네이버.*$/i, '')
-        .replace(/\s*::\s*.*$/i, '')
-        .trim();
-    }
-
-    // 전략 2: 임베디드 JSON에서 도로명주소 (정확한 주소)
-    const roadAddrMatch = html.match(/"roadAddress"\s*:\s*"([^"]+)"/);
-    if (roadAddrMatch) {
-      address = unicodeUnescape(roadAddrMatch[1]);
-    }
-
-    // 전략 3: 일반 주소 (도로명주소 없으면)
-    if (!address) {
-      const addrMatch = html.match(/"address"\s*:\s*"([^"]+)"/);
-      if (addrMatch) address = unicodeUnescape(addrMatch[1]);
-    }
-
-    // 전략 4: og:description에서 주소 추출 (마지막 fallback)
-    if (!address) {
-      const ogDescMatch = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
-      if (ogDescMatch) {
-        // og:description은 보통 "주소 · 전화 · 영업시간" 형태
-        const parts = ogDescMatch[1].split(/\s*[·•]\s*/);
-        // 주소처럼 보이는 부분 찾기 (시/도/구/동 키워드 포함)
-        for (const part of parts) {
-          if (/[시구동로]/.test(part) && part.length > 5) {
-            address = part.trim();
-            break;
-          }
+      if (html && html.length > 500) {
+        const ext = extractFromHtml(html);
+        att.found = { name: !!ext.name, addr: !!ext.address, cat: !!ext.category };
+        if (ext.name) {
+          result = ext;
+          debug.success = ep.url;
+          debug.attempts.push(att);
+          break;
         }
       }
+      debug.attempts.push(att);
+    } catch (e) {
+      debug.attempts.push({ url: ep.url.slice(0,80), error: String(e.message).slice(0,150) });
     }
+  }
 
-    // 카테고리 (진료과 추정에 활용)
-    const catMatch = html.match(/"category"\s*:\s*"([^"]+)"/);
-    if (catMatch) category = unicodeUnescape(catMatch[1]);
-
-    // 전화번호 (있으면 함께)
-    const phoneMatch = html.match(/"phone"\s*:\s*"([^"]+)"/);
-    if (phoneMatch) phone = phoneMatch[1];
-
-    if (!name && !address) {
-      return res.status(404).json({
-        ok: false,
-        error: '플레이스 정보를 찾을 수 없습니다. ID가 정확한지 확인해주세요.',
-      });
-    }
-
-    return res.status(200).json({
-      ok: true,
-      placeId: cleaned,
-      name: name || '',
-      address: address || '',
-      category: category || '',
-      phone: phone || '',
-    });
-  } catch (err) {
-    return res.status(500).json({
+  if (!result || !result.name) {
+    return res.status(404).json({
       ok: false,
-      error: '조회 실패: ' + (err.message || String(err)),
+      error: '플레이스 정보 추출 실패 — 수동 입력 필요',
+      debug: { ...debug, placeId: cleanedId },
     });
   }
+
+  return res.status(200).json({
+    ok: true,
+    placeId: cleanedId,
+    name: result.name,
+    address: result.address || '',
+    category: result.category || '',
+    phone: result.phone || '',
+  });
 }
 
-// 입력에서 플레이스 ID(숫자) 추출
-// 지원: "1234567890", "https://map.naver.com/p/entry/place/1234567890",
-//      "https://m.place.naver.com/place/1234567890/home" 등
 function extractPlaceId(input) {
   if (!input) return null;
   const s = String(input).trim();
-  // URL 형태에서 마지막 긴 숫자 부분 추출
+  if (/naver\.me\//i.test(s)) return null;
   const m = s.match(/(\d{6,})/);
   return m ? m[1] : null;
 }
 
-// "\uXXXX" 형태의 유니코드 이스케이프 풀기 (JSON 임베디드 필드에서 발생)
-function unicodeUnescape(s) {
+function extractFromHtml(html) {
+  let name = null, address = null, category = null, phone = null;
+
+  // og:title (가장 안정적)
+  const og = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
+  if (og) {
+    name = og[1].replace(/\s*[:\-—|]\s*네이버.*$/i, '').replace(/\s*::\s*.*$/i, '').trim();
+  }
+
+  // title 태그 fallback
+  if (!name) {
+    const t = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (t) name = t[1].replace(/\s*[:\-—|]\s*네이버.*$/i, '').trim();
+  }
+
+  // JSON-LD 구조화 데이터
+  const jsonLds = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const m of jsonLds) {
+    try {
+      const obj = JSON.parse(m[1].trim());
+      const o = Array.isArray(obj) ? obj[0] : obj;
+      if (o) {
+        if (!name && o.name) name = o.name;
+        if (!address && o.address) {
+          address = typeof o.address === 'string' ? o.address : (o.address.streetAddress || o.address.addressLocality || null);
+        }
+        if (!phone && o.telephone) phone = o.telephone;
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // 임베디드 JSON
+  if (!address) {
+    const m = html.match(/"roadAddress"\s*:\s*"([^"]+)"/);
+    if (m) address = unicode(m[1]);
+  }
+  if (!address) {
+    const m = html.match(/"address"\s*:\s*"([^"]+)"/);
+    if (m) address = unicode(m[1]);
+  }
+
+  const c = html.match(/"category"\s*:\s*"([^"]+)"/);
+  if (c) category = unicode(c[1]);
+
+  const p = html.match(/"phone"\s*:\s*"([^"]+)"/);
+  if (p) phone = p[1];
+
+  // 마지막 fallback - businessName
+  if (!name) {
+    const b = html.match(/"businessName"\s*:\s*"([^"]+)"/);
+    if (b) name = unicode(b[1]);
+  }
+
+  return { name, address, category, phone };
+}
+
+function unicode(s) {
   if (!s) return '';
   try {
-    return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, code) =>
-      String.fromCharCode(parseInt(code, 16))
-    );
-  } catch {
-    return s;
-  }
+    return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, c) => String.fromCharCode(parseInt(c, 16)));
+  } catch { return s; }
 }
