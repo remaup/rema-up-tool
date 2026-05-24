@@ -304,10 +304,10 @@ body{background:white}
 
 <div class="section-title">3-1. 일별 방문자 (그래프용)</div>
 <div class="field">
-<label>일별 방문자 30개 (쉼표·공백·줄바꿈 모두 가능)</label>
-<textarea id="t-daily" rows="3" placeholder="예: 120, 135, 142, 150, 165, 180, 175 ..."></textarea>
+<label>네이버 통계 표 복붙 또는 숫자만 입력</label>
+<textarea id="t-daily" rows="6" placeholder="방법1: 네이버 블로그 통계 표 통째로 복붙 (자동 인식)&#10;2026.05.10. (일)	9	2	1	6&#10;2026.05.09. (토)	11	1	2	8&#10;...&#10;&#10;방법2: 숫자만 30개 (쉼표·공백 구분)&#10;120, 135, 142, 150, 165, 180, 175 ..."></textarea>
 </div>
-<div class="helper-text" style="margin-bottom:8px;">네이버 블로그 통계 → 조회수 → 일간 → 1일부터 순서대로. 빈 칸은 자동 보간됨.</div>
+<div class="helper-text" style="margin-bottom:8px;">📋 네이버 블로그 통계 → 방문 분석 → 일간 → 표 전체 드래그 후 복붙. 추가 날짜 더 붙여넣으면 자동 누적·정렬됩니다. 빠진 날짜는 0으로 채워집니다.</div>
 <div id="weekly-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--primary-bg-light);padding:8px;border-radius:6px;font-size:11px;color:var(--text-mid);">
 <div>1주 평균: <strong id="o-week1-calc" style="color:var(--primary);">-</strong></div>
 <div>2주 평균: <strong id="o-week2-calc" style="color:var(--primary);">-</strong></div>
@@ -930,13 +930,15 @@ function renderDailyChart(daily){
   const linePath=points.map((p,i)=>(i===0?'M':'L')+p[0]+','+p[1]).join(' ');
   const areaPath=`${linePath} L${points[points.length-1][0]},${H-P} L${points[0][0]},${H-P} Z`;
   
-  // 주별 마커 (7일·14일·21일·28일에 라벨 표시)
+  // 주별 마커 (7일·14일·21일·28일에 라벨 표시) - 표 모드면 M/D 형식 사용
+  const dateLabels=daily._dateLabels; // 표 모드에서만 존재
   const labelTags=[];
   const weekMarkers=[];
   for(let i=0;i<filled.length;i++){
     // 1일·말일은 항상 라벨, 7·14·21·28일도 라벨
     if(i===0||i===filled.length-1||(i+1)%7===0){
-      labelTags.push(`<text x="${points[i][0]}" y="${H-10}" text-anchor="middle" font-size="9" fill="#94a3b8">${i+1}일</text>`);
+      const labelText=dateLabels?dateLabels[i]:`${i+1}일`;
+      labelTags.push(`<text x="${points[i][0]}" y="${H-10}" text-anchor="middle" font-size="9" fill="#94a3b8">${labelText}</text>`);
     }
     // 주차 경계 세로선
     if((i+1)%7===0&&i<filled.length-1){
@@ -979,15 +981,75 @@ function renderDailyChart(daily){
   </svg>`;
 }
 
-// 일별 데이터 파싱 (쉼표·공백·줄바꿈 모두 처리)
+// 일별 데이터 파싱 (3가지 모드 자동 인식: 1.표 모드 2.숫자만 모드 3.혼합)
 function parseDailyData(text){
   if(!text)return [];
-  // 쉼표·공백·줄바꿈·탭으로 split
+  
+  // 표 모드 감지: 날짜 형식(YYYY.MM.DD)이 있으면 표 모드
+  const hasDateFormat = /\d{4}\.\d{1,2}\.\d{1,2}/.test(text);
+  
+  if(hasDateFormat){
+    return parseTableData(text);
+  }
+  
+  // 기존 숫자만 모드 (쉼표·공백·줄바꿈·탭으로 split)
   const tokens=text.split(/[,\s\n\r\t]+/).filter(t=>t.length>0);
   return tokens.map(t=>{
     const n=parseInt(t.replace(/[^0-9]/g,''));
     return isNaN(n)?null:n;
   });
+}
+
+// 표 모드 파싱: 네이버 통계 표 형식 자동 인식
+// 예: "2026.05.10. (일)\t9\t2\t1\t6" → 날짜+전체방문자 추출 → 30일치 배열
+function parseTableData(text){
+  const lines=text.split(/\n+/).map(l=>l.trim()).filter(l=>l.length>0);
+  const dateMap=new Map();  // 날짜 → 전체방문자 (중복 날짜 자동 덮어쓰기)
+  
+  for(const line of lines){
+    // 날짜 추출: YYYY.MM.DD 형식
+    const dateMatch=line.match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+    if(!dateMatch)continue;
+    
+    const year=parseInt(dateMatch[1]);
+    const month=parseInt(dateMatch[2]);
+    const day=parseInt(dateMatch[3]);
+    
+    // 날짜 이후 부분에서 숫자만 추출 (요일 괄호 ()는 제외)
+    const afterDate=line.substring(dateMatch.index+dateMatch[0].length);
+    // 괄호 안 요일 제거 후 숫자 추출
+    const cleaned=afterDate.replace(/\([^)]*\)/g,'');
+    const nums=cleaned.match(/\d+/g);
+    
+    if(nums&&nums.length>0){
+      const totalVisitors=parseInt(nums[0]); // 첫 번째 숫자 = 전체 방문자
+      const dateKey=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      dateMap.set(dateKey,totalVisitors);
+    }
+  }
+  
+  if(dateMap.size===0)return [];
+  
+  // 날짜순 정렬
+  const sortedDates=Array.from(dateMap.keys()).sort();
+  
+  // 첫날부터 마지막날까지 빈 날짜는 0으로 채움
+  const firstDate=new Date(sortedDates[0]);
+  const lastDate=new Date(sortedDates[sortedDates.length-1]);
+  const result=[];
+  const dateLabels=[];
+  
+  const cur=new Date(firstDate);
+  while(cur<=lastDate){
+    const key=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+    result.push(dateMap.has(key)?dateMap.get(key):0);
+    dateLabels.push(`${cur.getMonth()+1}/${cur.getDate()}`);
+    cur.setDate(cur.getDate()+1);
+  }
+  
+  // 라벨을 결과에 첨부 (그래프에서 사용)
+  result._dateLabels=dateLabels;
+  return result;
 }
 
 // 7일씩 묶어서 주별 평균 계산
