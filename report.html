@@ -102,6 +102,12 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;backgr
 
 .note-box{background:var(--primary-bg);border-radius:6px;padding:12px 16px;font-size:9.5pt;color:var(--text-mid);line-height:1.6}
 .note-box strong{color:var(--primary);font-weight:700}
+.unified-search-title{font-size:13pt;font-weight:700;color:#166534;margin-bottom:6px}
+.unified-search-desc{font-size:9.5pt;color:var(--text-mid);line-height:1.6;margin-bottom:12px}
+.unified-search-desc b{color:#166534}
+.unified-search-list{display:flex;flex-wrap:wrap;gap:8px}
+.unified-search-chip{background:#e8f5e9;border:1px solid #22c55e;color:#166534;font-size:10pt;font-weight:600;padding:7px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px}
+.unified-search-chip::before{content:"✓";color:#22c55e;font-weight:700}
 
 /* 키워드 변화 표 */
 .kw-change-table{width:100%;border-collapse:collapse;font-size:10pt;margin-top:8px}
@@ -172,6 +178,12 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;backgr
 .publish-table .pt-title{font-weight:600;color:var(--text)}
 .publish-table .pt-date{color:var(--text-light);font-size:9pt}
 .publish-table .pt-kw{color:var(--text-mid);font-weight:600}
+.publish-table .pt-views{color:var(--primary);font-weight:700;text-align:center}
+.publish-table th.center,.publish-table td.center{text-align:center}
+.publish-table.compact{font-size:8.5pt}
+.publish-table.compact thead th{padding:6px 10px;font-size:8.5pt}
+.publish-table.compact tbody td{padding:4.5px 10px;font-size:8.5pt}
+.publish-table.compact .pt-date{font-size:8pt}
 
 /* 액션 플랜 */
 .action-list{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
@@ -295,6 +307,12 @@ body{background:white}
 </div>
 </div>
 
+<div style="background:#e8f5e9;padding:10px;border-radius:6px;border-left:3px solid #22c55e;margin-top:12px;">
+<div style="font-size:11px;color:#166534;font-weight:700;margin-bottom:6px;">🔎 통합검색 노출 중인 키워드 (선택)</div>
+<div class="helper-text" style="margin-bottom:6px;">네이버 <b>통합검색(메인 첫 화면)</b>에 노출 중인 키워드를 콤마(,)로 구분해 입력하세요. 블로그탭이 아닌 통합탭 노출이라 강력한 성과 지표입니다. <b>비워두면 보고서에 이 항목이 아예 안 나옵니다.</b></div>
+<div class="field"><textarea id="unified-search-kws" rows="3" placeholder="대구 통합암치료, 수성구 도수치료, 대구 고압산소치료"></textarea></div>
+</div>
+
 
 <div class="section-title">3. 블로그 트래픽 통계 (네이버 통계 캡처해서 입력)</div>
 <div class="helper-text" style="margin-bottom:10px;">네이버 블로그 → 통계 → 일간현황 / 유입분석 메뉴에서 수치 확인</div>
@@ -401,10 +419,22 @@ body{background:white}
 <div class="field"><label>월별 데이터 (콤마로 구분 · 가장 오래된 달부터)</label><textarea id="growth-data" placeholder="예: 0, 1, 2, 3, 5, 7" rows="2"></textarea></div>
 <div class="helper-text">예: 6개월 운영 시 "0, 1, 2, 3, 5, 7" → 시작 0개 → 1개월차 1개 → 6개월차 7개</div>
 
-<div class="section-title"><span>6. 이번 달 발행 콘텐츠 (최대 16편)</span><button class="action-btn outline" id="btn-fill-publish" type="button">⚡ 키워드 5개에서 12편 생성</button></div>
-<div class="helper-text" style="margin-bottom:8px;">한 줄에 한 글씩 · 형식: 제목 | MM/DD | 키워드</div>
-<div class="field"><textarea id="publish-list" rows="8" placeholder="여드름 흉터 치료법 5가지 | 05/03 | 분당 여드름흉터
-보톡스 가격 정직하게 공개합니다 | 05/05 | 정자동 보톡스
+<div class="section-title"><span>6. 이번 달 발행 콘텐츠 (최대 20편)</span><button class="action-btn outline" id="btn-fill-publish" type="button">⚡ 키워드 5개에서 12편 생성</button></div>
+
+<div class="naver-paste-box" style="background:#eef4ff;border:1px solid #c7dbff;border-radius:8px;padding:12px;margin-bottom:10px;">
+<div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:4px;">📋 네이버 블로그 목록 붙여넣기 (자동 변환)</div>
+<div class="helper-text" style="margin-bottom:6px;">네이버 블로그 홈이나 글 목록을 <b>통째로 복사</b>해서 아래에 붙여넣고 <b>변환</b> 버튼을 누르세요. 제목·날짜를 자동 인식해 아래 입력란을 채웁니다. (키워드는 제목 앞부분에서 자동 추출, 조회수는 나중에 직접 추가)</div>
+<textarea id="naver-paste" rows="4" placeholder="여기에 네이버 블로그 목록을 통째로 붙여넣으세요 (Ctrl+A → Ctrl+C → Ctrl+V)" style="width:100%;box-sizing:border-box;"></textarea>
+<div style="display:flex;gap:6px;margin-top:6px;">
+<button class="action-btn" id="btn-parse-naver" type="button" style="flex:0 0 auto;">✨ 변환해서 아래 채우기</button>
+<button class="action-btn outline" id="btn-clear-naver" type="button" style="flex:0 0 auto;">지우기</button>
+<span id="naver-parse-result" style="align-self:center;font-size:12px;color:var(--text-light);"></span>
+</div>
+</div>
+
+<div class="helper-text" style="margin-bottom:8px;">한 줄에 한 글씩 · 형식: 제목 | MM/DD | 키워드 | 조회수(선택)<br>※ 조회수는 안 넣어도 됩니다. 하나도 안 넣으면 보고서에 조회수 칸이 아예 안 나옵니다. (이 병원처럼 조회수를 넣고 싶을 때만 맨 뒤에 추가)</div>
+<div class="field"><textarea id="publish-list" rows="8" placeholder="여드름 흉터 치료법 5가지 | 05/03 | 분당 여드름흉터 | 342
+보톡스 가격 정직하게 공개합니다 | 05/05 | 정자동 보톡스 | 187
 ..."></textarea></div>
 
 <div class="section-title"><span>7. 다음 달 액션 플랜</span><button class="action-btn outline" id="btn-fill-action" type="button">⚡ 자동 채우기</button></div>
@@ -535,6 +565,12 @@ body{background:white}
 <br><span style="background:var(--success);color:white;padding:2px 8px;border-radius:3px;font-size:9pt;font-weight:700;">NEW</span> 이번달 신규 1페이지 진입
 </div>
 
+<div id="o-unified-search-block" style="margin-top:24px;display:none;">
+<div class="unified-search-title">🔎 통합검색 노출 중인 키워드</div>
+<div class="unified-search-desc">아래 키워드들은 네이버 <b>통합검색(메인 첫 화면)</b>에 노출되고 있습니다. 블로그탭을 넘어 통합탭에 노출된다는 것은, 검색한 사람 누구나 첫 화면에서 우리 병원 콘텐츠를 만난다는 의미입니다.</div>
+<div id="o-unified-search-list" class="unified-search-list"></div>
+</div>
+
 <div class="page-footer"><span>리마업 마케팅 (Read-Ma-Up)</span><span class="page-num">03 / 09</span></div>
 </div>
 
@@ -648,12 +684,13 @@ body{background:white}
 <h2 class="page-title">이번 달 <span class="accent">발행 콘텐츠</span></h2>
 <div class="page-subtitle">의료광고법 3중 검수를 거친 콘텐츠 전체 리스트입니다.</div>
 
-<table class="publish-table">
+<table class="publish-table" id="o-publish-tablewrap">
 <thead><tr>
 <th>#</th>
-<th style="width:62%;">콘텐츠 제목</th>
+<th style="width:62%;" id="o-pub-th-title">콘텐츠 제목</th>
 <th style="width:14%;">발행일</th>
 <th>타겟 키워드</th>
+<th class="center" id="o-pub-th-views" style="width:12%;display:none;">조회수</th>
 </tr></thead>
 <tbody id="o-publish-table"></tbody>
 </table>
@@ -1243,11 +1280,13 @@ function updatePreview(){
   
   // 발행 콘텐츠 파싱
   const publishRaw=val('publish-list');
-  const publishList=publishRaw.split('\n').map(l=>l.trim()).filter(l=>l.length>0).slice(0,16).map(l=>{
+  const publishList=publishRaw.split('\n').map(l=>l.trim()).filter(l=>l.length>0).slice(0,20).map(l=>{
     const parts=l.split('|').map(p=>p.trim());
-    return {title:parts[0]||l,date:parts[1]||'',keyword:parts[2]||''};
+    return {title:parts[0]||l,date:parts[1]||'',keyword:parts[2]||'',views:parts[3]||''};
   });
   const publishCount=publishList.length;
+  // 조회수가 하나라도 입력됐는지 (하나도 없으면 조회수 열 자체를 숨김)
+  const hasViews=publishList.some(p=>p.views&&p.views.trim()!=='');
   
   // ===== Page 2: KPI =====
   document.getElementById('o-kpi-top10').textContent=top10Now;
@@ -1313,6 +1352,19 @@ function updatePreview(){
     });
   }
   
+  // 통합검색 노출 키워드 (입력 있을 때만 표시)
+  const unifiedRaw=val('unified-search-kws');
+  const unifiedList=(unifiedRaw||'').split(',').map(s=>s.trim()).filter(s=>s);
+  const unifiedBlock=document.getElementById('o-unified-search-block');
+  const unifiedListEl=document.getElementById('o-unified-search-list');
+  if(unifiedList.length>0){
+    unifiedBlock.style.display='block';
+    unifiedListEl.innerHTML=unifiedList.map(kw=>`<span class="unified-search-chip">${escapeHtml(kw)}</span>`).join('');
+  } else {
+    unifiedBlock.style.display='none';
+    unifiedListEl.innerHTML='';
+  }
+  
   // ===== Page 4: 트래픽 =====
   document.getElementById('o-tk-visit').textContent=visitNow!=null?visitNow:0;
   document.getElementById('o-tk-view').textContent=viewNow!=null?viewNow:0;
@@ -1370,13 +1422,28 @@ function updatePreview(){
   
   // ===== Page 7: 발행 콘텐츠 =====
   const pubBody=document.getElementById('o-publish-table');
+  const pubTable=document.getElementById('o-publish-tablewrap');
+  const pubThViews=document.getElementById('o-pub-th-views');
   pubBody.innerHTML='';
+  // 조회수 열 표시/숨김 (하나라도 입력됐을 때만 보임)
+  if(pubThViews) pubThViews.style.display=hasViews?'':'none';
+  // 제목 칸 너비: 조회수 열 있으면 좁게
+  const titleTh=document.getElementById('o-pub-th-title');
+  if(titleTh) titleTh.style.width=hasViews?'50%':'62%';
+  // 16편 초과 시 compact 모드로 한 페이지에 맞춤
+  if(pubTable) pubTable.classList.toggle('compact',publishList.length>16);
+  const colspan=hasViews?5:4;
   if(publishList.length===0){
-    pubBody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:30px;">발행 콘텐츠를 입력해주세요</td></tr>';
+    pubBody.innerHTML=`<tr><td colspan="${colspan}" style="text-align:center;color:var(--text-light);padding:30px;">발행 콘텐츠를 입력해주세요</td></tr>`;
   } else {
     publishList.forEach((p,i)=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td class="pt-num">${i+1}</td><td class="pt-title">${escapeHtml(p.title)}</td><td class="pt-date">${escapeHtml(p.date)}</td><td class="pt-kw">${escapeHtml(p.keyword)}</td>`;
+      let html=`<td class="pt-num">${i+1}</td><td class="pt-title">${escapeHtml(p.title)}</td><td class="pt-date">${escapeHtml(p.date)}</td><td class="pt-kw">${escapeHtml(p.keyword)}</td>`;
+      if(hasViews){
+        const v=p.views&&p.views.trim()!==''?escapeHtml(p.views):'-';
+        html+=`<td class="pt-views">${v}</td>`;
+      }
+      tr.innerHTML=html;
       pubBody.appendChild(tr);
     });
   }
@@ -1587,6 +1654,89 @@ function autoFillPublish(){
   showToast('12편 자동 생성 완료 ※ 실제 발행한 글 제목으로 수정 필수','success');
 }
 document.getElementById('btn-fill-publish').addEventListener('click',autoFillPublish);
+
+// ===== 네이버 블로그 목록 자동 변환 =====
+function parseNaverBlogList(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const posts=[];
+  // 날짜: 26.7.1.수 / 26.07.01.수
+  const dateRe=/^(\d{2})\.(\d{1,2})\.(\d{1,2})\.[월화수목금토일]$/;
+  const skipRe=/^(블로그이미지\s*수\s*\d*|프로필|.*공식\s*블로그|\d{4}년\s*\d{1,2}월\s*\d{1,2}일.*요일|공감|댓글|스크랩|이\s*블로그.*|카테고리\s*없음|\d+분\s*전|첨부.*|더보기|본문\s*기타\s*기능)$/;
+  // 날짜 블록 구조: [제목][본문...][날짜][긴날짜][블로그이미지 수N][프로필][계정명][공식블로그]
+  // 날짜를 만나면 직전 블록 첫 줄이 제목. 날짜 뒤 프로필 블록(프로필~공식블로그)은 전부 무시.
+  let curTitle=null;
+  let inProfileBlock=false;
+  for(const line of lines){
+    const m=line.match(dateRe);
+    if(m){
+      if(curTitle){
+        const mm=String(parseInt(m[2])).padStart(2,'0');
+        const dd=String(parseInt(m[3])).padStart(2,'0');
+        posts.push({title:curTitle,date:`${mm}/${dd}`});
+        curTitle=null;
+      }
+      inProfileBlock=true; // 날짜 뒤부터 프로필 블록 시작
+      continue;
+    }
+    // 프로필 블록 안에서는 공식블로그 줄을 만날 때까지 전부 무시
+    if(inProfileBlock){
+      if(/공식\s*블로그/.test(line)){
+        inProfileBlock=false; // 프로필 블록 끝. 다음 줄부터 새 제목
+      }
+      continue;
+    }
+    if(skipRe.test(line)) continue;
+    if(curTitle===null){
+      curTitle=line;
+    }
+  }
+  return posts;
+}
+
+// 제목에서 키워드 자동 추출 (앞 2~3어절: 보통 '지역+진료과목' 형태)
+function guessKeyword(title){
+  const words=title.split(/\s+/);
+  if(words.length<=2) return words.join(' ');
+  // 앞 2어절을 기본 키워드로 (예: "대구 통합암치료 한방병원..." → "대구 통합암치료")
+  return words.slice(0,2).join(' ');
+}
+
+document.getElementById('btn-parse-naver').addEventListener('click',()=>{
+  const raw=document.getElementById('naver-paste').value;
+  const resultEl=document.getElementById('naver-parse-result');
+  if(!raw.trim()){
+    resultEl.textContent='먼저 네이버 목록을 붙여넣어 주세요';
+    resultEl.style.color='var(--danger)';
+    return;
+  }
+  const posts=parseNaverBlogList(raw);
+  if(posts.length===0){
+    resultEl.textContent='인식된 글이 없어요. 목록을 다시 복사해보세요';
+    resultEl.style.color='var(--danger)';
+    return;
+  }
+  // 최대 20편, 최신순 그대로
+  const lines=posts.slice(0,20).map(p=>`${p.title} | ${p.date} | ${guessKeyword(p.title)}`);
+  const existing=document.getElementById('publish-list').value.trim();
+  // 기존 내용 있으면 물어보기
+  if(existing){
+    if(!confirm(`${posts.length}개 글을 인식했어요.\n기존 입력란 내용을 덮어쓸까요?\n(취소하면 아래에 이어붙입니다)`)){
+      document.getElementById('publish-list').value=existing+'\n'+lines.join('\n');
+    } else {
+      document.getElementById('publish-list').value=lines.join('\n');
+    }
+  } else {
+    document.getElementById('publish-list').value=lines.join('\n');
+  }
+  resultEl.textContent=`✓ ${posts.length}개 글 변환 완료`;
+  resultEl.style.color='var(--success)';
+  updatePreview();
+});
+
+document.getElementById('btn-clear-naver').addEventListener('click',()=>{
+  document.getElementById('naver-paste').value='';
+  document.getElementById('naver-parse-result').textContent='';
+});
 
 updatePreview();
 </script>
