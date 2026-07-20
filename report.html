@@ -423,7 +423,7 @@ body{background:white}
 
 <div class="naver-paste-box" style="background:#eef4ff;border:1px solid #c7dbff;border-radius:8px;padding:12px;margin-bottom:10px;">
 <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:4px;">📋 네이버 블로그 목록 붙여넣기 (자동 변환)</div>
-<div class="helper-text" style="margin-bottom:6px;">네이버 블로그 홈이나 글 목록을 <b>통째로 복사</b>해서 아래에 붙여넣고 <b>변환</b> 버튼을 누르세요. 제목·날짜를 자동 인식해 아래 입력란을 채웁니다. (키워드는 제목 앞부분에서 자동 추출, 조회수는 나중에 직접 추가)</div>
+<div class="helper-text" style="margin-bottom:6px;">네이버 블로그 목록이나 <b>블로그 분석툴 데이터</b>를 통째로 복사해서 붙여넣고 <b>변환</b> 버튼을 누르세요. <b>제목·발행일만 자동 인식</b>되고, 키워드·조회수는 비워두니 직접 채우시면 됩니다.</div>
 <textarea id="naver-paste" rows="4" placeholder="여기에 네이버 블로그 목록을 통째로 붙여넣으세요 (Ctrl+A → Ctrl+C → Ctrl+V)" style="width:100%;box-sizing:border-box;"></textarea>
 <div style="display:flex;gap:6px;margin-top:6px;">
 <button class="action-btn" id="btn-parse-naver" type="button" style="flex:0 0 auto;">✨ 변환해서 아래 채우기</button>
@@ -547,7 +547,7 @@ body{background:white}
 <!-- Page 3: 키워드 순위 변화 -->
 <div class="page">
 <h2 class="page-title">키워드 <span class="accent">순위 변화</span></h2>
-<div class="page-subtitle">이번 달 노출 되었던 키워드 5개의 순위 입니다.</div>
+<div class="page-subtitle">이번 달 키워드 5개의 순위 변동입니다.</div>
 
 <table class="kw-change-table">
 <thead><tr>
@@ -567,7 +567,7 @@ body{background:white}
 
 <div id="o-unified-search-block" style="margin-top:24px;display:none;">
 <div class="unified-search-title">🔎 통합검색 노출 중인 키워드</div>
-<div class="unified-search-desc">아래 키워드들은 네이버 <b>통합검색(메인 첫 화면)</b>에 노출되고 있습니다.</div>
+<div class="unified-search-desc">아래 키워드들은 네이버 <b>통합검색(메인 첫 화면)</b>에 노출되고 있습니다. 블로그탭을 넘어 통합탭에 노출된다는 것은, 검색한 사람 누구나 첫 화면에서 우리 병원 콘텐츠를 만난다는 의미입니다.</div>
 <div id="o-unified-search-list" class="unified-search-list"></div>
 </div>
 
@@ -1659,11 +1659,36 @@ document.getElementById('btn-fill-publish').addEventListener('click',autoFillPub
 function parseNaverBlogList(text){
   const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
   const posts=[];
-  // 날짜: 26.7.1.수 / 26.07.01.수
+
+  // === 형식 A: 분석툴 형식 (날짜 먼저, 다음 줄이 제목) ===
+  // 2026.07.16
+  // 천안 황반변성 직선이 휘어 보인다면...
+  // 준최5.5 / 40.13 / 1,798자 / 9장 / 7개
+  const dateFullRe=/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})\.?$/;
+  // 메타데이터로 보이는 줄 (제목이 될 수 없는 것)
+  const metaRe=/^(준최[\d.]*|최적[\d.]*|일반|[\d,]+\.?\d*|[\d,]+자|\d+장|\d+개|\d+건|\d+회)$/;
+
+  let hasFullDate = lines.some(l => dateFullRe.test(l));
+  if (hasFullDate) {
+    for(let i=0;i<lines.length;i++){
+      const m=lines[i].match(dateFullRe);
+      if(!m) continue;
+      // 날짜 다음 줄부터 제목 찾기 (메타데이터 줄은 건너뜀)
+      let j=i+1;
+      while(j<lines.length && (metaRe.test(lines[j]) || dateFullRe.test(lines[j]))) j++;
+      if(j<lines.length){
+        const mm=String(parseInt(m[2])).padStart(2,'0');
+        const dd=String(parseInt(m[3])).padStart(2,'0');
+        posts.push({title:lines[j],date:`${mm}/${dd}`});
+      }
+    }
+    return posts;
+  }
+
+  // === 형식 B: 네이버 블로그 홈 형식 (제목 먼저, 나중에 날짜) ===
+  // 26.7.1.수 / 2026년 7월 1일 수요일 / 블로그이미지 수5 / 프로필 / 계정명 / 공식 블로그
   const dateRe=/^(\d{2})\.(\d{1,2})\.(\d{1,2})\.[월화수목금토일]$/;
   const skipRe=/^(블로그이미지\s*수\s*\d*|프로필|.*공식\s*블로그|\d{4}년\s*\d{1,2}월\s*\d{1,2}일.*요일|공감|댓글|스크랩|이\s*블로그.*|카테고리\s*없음|\d+분\s*전|첨부.*|더보기|본문\s*기타\s*기능)$/;
-  // 날짜 블록 구조: [제목][본문...][날짜][긴날짜][블로그이미지 수N][프로필][계정명][공식블로그]
-  // 날짜를 만나면 직전 블록 첫 줄이 제목. 날짜 뒤 프로필 블록(프로필~공식블로그)은 전부 무시.
   let curTitle=null;
   let inProfileBlock=false;
   for(const line of lines){
@@ -1675,20 +1700,15 @@ function parseNaverBlogList(text){
         posts.push({title:curTitle,date:`${mm}/${dd}`});
         curTitle=null;
       }
-      inProfileBlock=true; // 날짜 뒤부터 프로필 블록 시작
+      inProfileBlock=true;
       continue;
     }
-    // 프로필 블록 안에서는 공식블로그 줄을 만날 때까지 전부 무시
     if(inProfileBlock){
-      if(/공식\s*블로그/.test(line)){
-        inProfileBlock=false; // 프로필 블록 끝. 다음 줄부터 새 제목
-      }
+      if(/공식\s*블로그/.test(line)){ inProfileBlock=false; }
       continue;
     }
     if(skipRe.test(line)) continue;
-    if(curTitle===null){
-      curTitle=line;
-    }
+    if(curTitle===null){ curTitle=line; }
   }
   return posts;
 }
@@ -1716,7 +1736,8 @@ document.getElementById('btn-parse-naver').addEventListener('click',()=>{
     return;
   }
   // 최대 20편, 최신순 그대로
-  const lines=posts.slice(0,20).map(p=>`${p.title} | ${p.date} | ${guessKeyword(p.title)}`);
+  // 키워드는 비워둠 (사용자가 직접 입력)
+  const lines=posts.slice(0,20).map(p=>`${p.title} | ${p.date} | `);
   const existing=document.getElementById('publish-list').value.trim();
   // 기존 내용 있으면 물어보기
   if(existing){
