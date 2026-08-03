@@ -326,7 +326,11 @@ body{background:white}
 </div>
 <div class="field-row">
 <div class="field"><label>검색 유입율 (%) 이번달</label><input type="number" id="t-search-now" placeholder="예: 78" min="0" max="100"></div>
+<div class="field"><label>검색 유입율 (%) 전월</label><input type="number" id="t-search-prev" placeholder="예: 70" min="0" max="100"></div>
+</div>
+<div class="field-row">
 <div class="field"><label>재방문율 (%) 이번달</label><input type="number" id="t-revisit-now" placeholder="예: 22" min="0" max="100"></div>
+<div class="field"><label>재방문율 (%) 전월</label><input type="number" id="t-revisit-prev" placeholder="예: 15" min="0" max="100"></div>
 </div>
 
 <div class="section-title">3-1. 일별 방문자 (그래프용)</div>
@@ -593,12 +597,12 @@ body{background:white}
 <div class="kpi-card">
 <div class="kpi-label">검색 유입율</div>
 <div class="kpi-row"><span class="kpi-value" id="o-tk-search">0</span><span class="kpi-unit">%</span></div>
-<div class="kpi-sub">자연 검색 비중</div>
+<span class="kpi-change" id="o-tk-search-chg"></span>
 </div>
 <div class="kpi-card">
 <div class="kpi-label">재방문율</div>
 <div class="kpi-row"><span class="kpi-value" id="o-tk-revisit">0</span><span class="kpi-unit">%</span></div>
-<div class="kpi-sub">충성 독자</div>
+<span class="kpi-change" id="o-tk-revisit-chg"></span>
 </div>
 </div>
 
@@ -829,6 +833,16 @@ function applyChange(elId,now,prev,inverse){
   const d=changeData(now,prev,inverse);
   el.textContent=d.text;
   el.className='kpi-change '+d.cls;
+}
+
+function applyChangePP(elId,now,prev){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  if(now==null||prev==null){ el.textContent=''; el.className='kpi-change'; return; }
+  const diff=now-prev;
+  if(diff>0){ el.textContent='\u25b2 '+diff+'%p'; el.className='kpi-change up'; }
+  else if(diff<0){ el.textContent='\u25bc '+Math.abs(diff)+'%p'; el.className='kpi-change down'; }
+  else{ el.textContent='\u2013 \ubcc0\ub3d9 \uc5c6\uc74c'; el.className='kpi-change flat'; }
 }
 
 // 자동 순위 조회 (v4와 동일)
@@ -1276,7 +1290,9 @@ function updatePreview(){
   const viewNow=parseInt(val('t-view-now'))||null;
   const viewPrev=parseInt(val('t-view-prev'))||null;
   const searchNow=parseInt(val('t-search-now'))||null;
+  const searchPrev=parseInt(val('t-search-prev'))||null;
   const revisitNow=parseInt(val('t-revisit-now'))||null;
+  const revisitPrev=parseInt(val('t-revisit-prev'))||null;
   
   // 발행 콘텐츠 파싱
   const publishRaw=val('publish-list');
@@ -1374,6 +1390,8 @@ function updatePreview(){
   document.getElementById('o-tk-view-chg').textContent='';
   applyChange('o-tk-visit-chg',visitNow,visitPrev,false);
   applyChange('o-tk-view-chg',viewNow,viewPrev,false);
+  applyChangePP('o-tk-search-chg',searchNow,searchPrev);
+  applyChangePP('o-tk-revisit-chg',revisitNow,revisitPrev);
   
   // 일별 추이 (30개 숫자 파싱 → 자동 주별 평균 + 30점 그래프)
   const daily=parseDailyData(val('t-daily'));
