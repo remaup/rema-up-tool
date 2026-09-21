@@ -575,23 +575,15 @@ body{background:white}
 <!-- Page 3: 키워드 순위 변화 -->
 <div class="page">
 <h2 class="page-title">키워드 <span class="accent">순위 변화</span></h2>
-<div class="page-subtitle">이번 달 키워드 5개의 순위 변동입니다. <b>(네이버 블로그탭 검색 기준)</b></div>
+<div class="page-subtitle">이번 달 키워드 5개의 순위입니다. <b>(네이버 블로그탭 검색 기준)</b></div>
 
 <table class="kw-change-table">
 <thead><tr>
-<th style="width:32%;">키워드</th>
-<th class="center" style="width:18%;">이번 달</th>
-<th class="center" style="width:18%;">전월</th>
-<th class="center" style="width:18%;">변동</th>
-<th class="center" style="width:14%;">진단</th>
+<th style="width:70%;">키워드</th>
+<th class="center" style="width:30%;">순위</th>
 </tr></thead>
 <tbody id="o-kw-table"></tbody>
 </table>
-
-<div style="margin-top:24px;" class="note-box">
-<strong>색상 안내</strong> · <span style="color:var(--success);font-weight:700;">●</span> 1~5위 우수 &nbsp; <span style="color:var(--warning);font-weight:700;">●</span> 6~10위 보통 &nbsp; <span style="color:var(--danger);font-weight:700;">●</span> 11위 이상 미흡
-<br><span style="background:var(--success);color:white;padding:2px 8px;border-radius:3px;font-size:9pt;font-weight:700;">NEW</span> 이번달 신규 1페이지 진입
-</div>
 
 <div id="o-unified-search-block" style="margin-top:24px;display:none;">
 <div class="unified-search-title">🔎 통합검색 노출 중인 키워드</div>
@@ -1364,30 +1356,12 @@ function updatePreview(){
   const tbody=document.getElementById('o-kw-table');
   tbody.innerHTML='';
   if(keywords.length===0){
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:40px;">키워드를 입력해주세요</td></tr>';
+    tbody.innerHTML='<tr><td colspan="2" style="text-align:center;color:var(--text-light);padding:40px;">키워드를 입력해주세요</td></tr>';
   } else {
     keywords.forEach(k=>{
-      const isNew=(!k.prev||k.prev>10)&&k.now&&k.now<=10;
       const tr=document.createElement('tr');
-      if(isNew)tr.className='new-entry';
-      let changeCell='';
-      if(k.now&&!k.prev){
-        changeCell=`<span class="change new-badge">NEW</span>`;
-      } else if(!k.now&&k.prev){
-        changeCell='<span class="change down">▼ 이탈</span>';
-      } else if(k.now&&k.prev){
-        const diff=k.prev-k.now; // 순위는 작을수록 좋음
-        if(diff>0)changeCell=`<span class="change up">▲ ${diff}</span>`;
-        else if(diff<0)changeCell=`<span class="change down">▼ ${Math.abs(diff)}</span>`;
-        else changeCell='<span class="change flat">→</span>';
-      } else {
-        changeCell='<span class="change flat">―</span>';
-      }
       tr.innerHTML=`<td class="kw-name">${escapeHtml(k.name)}</td>
-        <td class="rank ${rankClass(k.now)}">${rankDisplay(k.now)}</td>
-        <td class="rank ${rankClass(k.prev)}">${rankDisplay(k.prev)}</td>
-        <td>${changeCell}</td>
-        <td class="rank ${rankClass(k.now)}">${rankLabel(k.now)}</td>`;
+        <td class="rank ${rankClass(k.now)}">${rankDisplay(k.now)}</td>`;
       tbody.appendChild(tr);
     });
   }
