@@ -473,6 +473,7 @@ body{background:white}
 ..."></textarea></div>
 
 <div class="section-title"><span>7. 다음 달 액션 플랜</span><button class="action-btn outline" id="btn-fill-action" type="button">⚡ 자동 채우기</button></div>
+<div class="helper-text" style="margin-bottom:6px;">전략은 1~3개까지 자유롭게. <b>제목을 비워두면 그 전략은 보고서에 안 나옵니다.</b> (1개만 써도 됨)</div>
 <div class="field"><label>다음 달 타겟 키워드 5개 (콤마 구분)</label><input type="text" id="next-kws" placeholder="분당 모공축소, 정자동 리프팅, ..."></div>
 <div class="subitem-row">
 <div class="row-label">전략 1 — 제목</div>
@@ -589,9 +590,9 @@ body{background:white}
 <div class="page-footer"><span>리마업 마케팅 (Read-Ma-Up)</span><span class="page-num">02 / 09</span></div>
 </div>
 
-<!-- Page 3: 키워드 순위 변화 -->
+<!-- Page 3: 키워드 순위 -->
 <div class="page" id="pg3" data-pagename="키워드 순위">
-<h2 class="page-title">키워드 <span class="accent">순위 변화</span></h2>
+<h2 class="page-title">키워드 <span class="accent">순위</span></h2>
 <div class="page-subtitle">이번 달 키워드 5개의 순위입니다. <b>(네이버 블로그탭 검색 기준)</b></div>
 
 <table class="kw-change-table">
@@ -757,18 +758,18 @@ body{background:white}
 
 <div class="section-heading">📋 핵심 전략 3가지</div>
 <div class="action-list">
-<div class="action-card">
-<div class="action-num">STRATEGY 01</div>
+<div class="action-card" id="o-a1-card">
+<div class="action-num" id="o-a1-num">STRATEGY 01</div>
 <div class="action-title" id="o-a1-title">제목을 입력해주세요</div>
 <div class="action-body" id="o-a1-body">설명이 여기에 표시됩니다.</div>
 </div>
-<div class="action-card">
-<div class="action-num">STRATEGY 02</div>
+<div class="action-card" id="o-a2-card">
+<div class="action-num" id="o-a2-num">STRATEGY 02</div>
 <div class="action-title" id="o-a2-title">제목을 입력해주세요</div>
 <div class="action-body" id="o-a2-body">설명이 여기에 표시됩니다.</div>
 </div>
-<div class="action-card">
-<div class="action-num">STRATEGY 03</div>
+<div class="action-card" id="o-a3-card">
+<div class="action-num" id="o-a3-num">STRATEGY 03</div>
 <div class="action-title" id="o-a3-title">제목을 입력해주세요</div>
 <div class="action-body" id="o-a3-body">설명이 여기에 표시됩니다.</div>
 </div>
@@ -1490,9 +1491,19 @@ function updatePreview(){
   } else {
     nextKwsEl.innerHTML=nextKws.map(k=>`<span class="target-kw-tag">${escapeHtml(k)}</span>`).join('');
   }
+  let actShown=0;
   for(let i=1;i<=3;i++){
-    document.getElementById(`o-a${i}-title`).textContent=val(`a${i}-title`)||'제목을 입력해주세요';
-    document.getElementById(`o-a${i}-body`).textContent=val(`a${i}-body`)||'설명이 표시됩니다.';
+    const t=val(`a${i}-title`);
+    const card=document.getElementById(`o-a${i}-card`);
+    if(t){
+      actShown++;
+      card.classList.remove('pg-hidden');
+      document.getElementById(`o-a${i}-num`).textContent='STRATEGY '+String(actShown).padStart(2,'0');
+      document.getElementById(`o-a${i}-title`).textContent=t;
+      document.getElementById(`o-a${i}-body`).textContent=val(`a${i}-body`)||'';
+    } else {
+      card.classList.add('pg-hidden');
+    }
   }
   
   // ===== Page 9: 연장 안내 =====
