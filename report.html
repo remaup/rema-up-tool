@@ -184,6 +184,10 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;backgr
 .publish-table.compact thead th{padding:6px 10px;font-size:8.5pt}
 .publish-table.compact tbody td{padding:4.5px 10px;font-size:8.5pt}
 .publish-table.compact .pt-date{font-size:8pt}
+.publish-table.ultra{font-size:7.5pt}
+.publish-table.ultra thead th{padding:4px 8px;font-size:7.5pt}
+.publish-table.ultra tbody td{padding:2.3px 8px;font-size:7.5pt}
+.publish-table.ultra .pt-date{font-size:7pt}
 
 /* 액션 플랜 */
 .action-list{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
@@ -454,7 +458,7 @@ body{background:white}
 <div class="field"><label>월별 데이터 (콤마로 구분 · 가장 오래된 달부터)</label><textarea id="growth-data" placeholder="예: 0, 1, 2, 3, 5, 7" rows="2"></textarea></div>
 <div class="helper-text">예: 6개월 운영 시 "0, 1, 2, 3, 5, 7" → 시작 0개 → 1개월차 1개 → 6개월차 7개</div>
 
-<div class="section-title"><span>6. 이번 달 발행 콘텐츠 (최대 20편)</span><button class="action-btn outline" id="btn-fill-publish" type="button">⚡ 키워드 5개에서 12편 생성</button></div>
+<div class="section-title"><span>6. 이번 달 발행 콘텐츠 (최대 30편)</span><button class="action-btn outline" id="btn-fill-publish" type="button">⚡ 키워드 5개에서 12편 생성</button></div>
 
 <div class="naver-paste-box" style="background:#eef4ff;border:1px solid #c7dbff;border-radius:8px;padding:12px;margin-bottom:10px;">
 <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:4px;">📋 네이버 블로그 목록 붙여넣기 (자동 변환)</div>
@@ -1330,7 +1334,7 @@ function updatePreview(){
   
   // 발행 콘텐츠 파싱
   const publishRaw=val('publish-list');
-  const publishList=publishRaw.split('\n').map(l=>l.trim()).filter(l=>l.length>0).slice(0,20).map(l=>{
+  const publishList=publishRaw.split('\n').map(l=>l.trim()).filter(l=>l.length>0).slice(0,30).map(l=>{
     const parts=l.split('|').map(p=>p.trim());
     return {title:parts[0]||l,date:parts[1]||'',keyword:parts[2]||'',views:parts[3]||''};
   });
@@ -1464,8 +1468,8 @@ function updatePreview(){
   // 제목 칸 너비: 조회수 열 있으면 좁게
   const titleTh=document.getElementById('o-pub-th-title');
   if(titleTh) titleTh.style.width=hasViews?'50%':'62%';
-  // 16편 초과 시 compact 모드로 한 페이지에 맞춤
-  if(pubTable) pubTable.classList.toggle('compact',publishList.length>16);
+  // 16편 초과 시 compact, 22편 초과 시 ultra 모드로 한 페이지에 맞춤
+  if(pubTable){ pubTable.classList.toggle('compact',publishList.length>16); pubTable.classList.toggle('ultra',publishList.length>22); }
   const colspan=hasViews?5:4;
   if(publishList.length===0){
     pubBody.innerHTML=`<tr><td colspan="${colspan}" style="text-align:center;color:var(--text-light);padding:30px;">발행 콘텐츠를 입력해주세요</td></tr>`;
@@ -1781,7 +1785,7 @@ document.getElementById('btn-parse-naver').addEventListener('click',()=>{
   }
   // 최대 20편, 최신순 그대로
   // 키워드는 비워둠 (사용자가 직접 입력)
-  const lines=posts.slice(0,20).map(p=>`${p.title} | ${p.date} | `);
+  const lines=posts.slice(0,30).map(p=>`${p.title} | ${p.date} | `);
   const existing=document.getElementById('publish-list').value.trim();
   // 기존 내용 있으면 물어보기
   if(existing){
