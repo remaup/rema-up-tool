@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>리마업 - 월간 성과 보고서 생성기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b2554'/%3E%3Ctext x='32' y='46' font-family='Arial,sans-serif' font-size='40' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 :root{--primary:#0056b3;--primary-light:#155dfc;--primary-dark:#003d80;--primary-bg:#e8f1fa;--primary-bg-light:#f4f8fd;--text:#1a2332;--text-mid:#475569;--text-light:#94a3b8;--border:#e2e8f0;--border-light:#f1f5f9;--bg:#f1f5f9;--success:#10b981;--warning:#f59e0b;--danger:#ef4444}
@@ -11,6 +12,7 @@
 body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased}
 .app{display:grid;grid-template-columns:480px 1fr;min-height:100vh}
 .sidebar{background:white;border-right:1px solid var(--border);height:100vh;overflow-y:auto;position:sticky;top:0}
+.sidebar,.preview-label,.rl-modal{--text-light:#64748b}
 .sidebar-header{padding:14px 24px 0 24px;background:white;position:sticky;top:0;z-index:10}
 .sidebar-header h1{font-size:16px;font-weight:700;color:var(--primary);margin:0 0 2px 0;letter-spacing:-0.02em}
 .sidebar-header p{font-size:12px;color:var(--text-light);margin:0 0 12px 0}
@@ -18,7 +20,7 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;backgr
 .tab-bar a{padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-light);text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s;margin-bottom:-1px}
 .tab-bar a.active{color:var(--primary);border-bottom-color:var(--primary)}
 .tab-bar a:hover:not(.active){color:var(--text)}
-.form-content{padding:16px 24px 110px 24px}
+.form-content{padding:16px 24px 280px 24px}
 .section-title{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.08em;margin:22px 0 10px 0;padding-bottom:6px;border-bottom:2px solid var(--primary-bg);display:flex;justify-content:space-between;align-items:center}
 .section-title:first-child{margin-top:0}
 .field{margin-bottom:12px}
@@ -258,6 +260,14 @@ body{background:white}
 .pw-body .save-btn{flex:none;padding:11px;font-size:13px}
 
 .pg-select-title{font-size:12px;font-weight:700;color:var(--text-mid);margin:14px 0 6px}
+.pg-details{margin:0 0 10px}
+.pg-details summary{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--text-mid);cursor:pointer;padding:6px 2px;list-style:none;user-select:none}
+.pg-details summary::-webkit-details-marker{display:none}
+.pg-details summary::before{content:"▸";font-size:11px;color:var(--text-light);transition:transform .15s}
+.pg-details[open] summary::before{transform:rotate(90deg)}
+.pg-details summary .pg-count{margin-left:auto;font-weight:600;color:var(--primary)}
+.pg-details .pg-select{margin:6px 0 2px}
+.pg-details .pg-hint{font-size:11px;color:var(--text-light);margin:0 0 4px 2px}
 .pg-select{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:12px;padding:12px 14px;background:#f1f5f9;border-radius:8px}
 .pg-check{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text);cursor:pointer;white-space:nowrap}
 .pg-check input{cursor:pointer;width:15px;height:15px}
@@ -277,7 +287,7 @@ body{background:white}
 
 <div class="tab-bar">
 <a href="index.html">진단 리포트</a>
-<a href="report.html" class="active">월간 보고서</a>
+<a href="report.html" class="active">월간 성과 보고서</a>
 </div>
 
 <div class="save-bar">
@@ -516,7 +526,9 @@ body{background:white}
 </div>
 
 <div class="print-btn-bar">
-<div class="pg-select-title">출력할 페이지 선택 (체크 해제하면 PDF에서 제외)</div>
+<details class="pg-details" id="pg-details">
+<summary>출력할 페이지 선택<span class="pg-count" id="pg-count">9쪽 모두 출력</span></summary>
+<div class="pg-hint">체크를 풀면 그 페이지는 PDF에서 빠집니다</div>
 <div class="pg-select"><label class="pg-check"><input type="checkbox" class="pg-toggle" data-pg="pg1" checked> 1. 표지</label>
 <label class="pg-check"><input type="checkbox" class="pg-toggle" data-pg="pg2" checked> 2. 한눈에 보는 성과</label>
 <label class="pg-check"><input type="checkbox" class="pg-toggle" data-pg="pg3" checked> 3. 키워드 순위</label>
@@ -526,6 +538,7 @@ body{background:white}
 <label class="pg-check"><input type="checkbox" class="pg-toggle" data-pg="pg7" checked> 7. 발행 콘텐츠</label>
 <label class="pg-check"><input type="checkbox" class="pg-toggle" data-pg="pg8" checked> 8. 액션 플랜</label>
 <label class="pg-check"><input type="checkbox" class="pg-toggle" data-pg="pg9" checked> 9. 계약 연장 안내</label></div>
+</details>
 <button class="print-btn" onclick="window.print()">📄 PDF로 저장하기 (Ctrl+P / Cmd+P)</button>
 <div class="print-hint">인쇄 대화상자에서 "PDF로 저장" 선택, 여백 없음</div>
 </div>
@@ -1838,7 +1851,7 @@ updatePreview();
 <script>
 // ===== 보고서 저장/불러오기 (서버) =====
 // 저장소는 리마업 CRM 서버에 있습니다. 병원 자료라서 CRM 비밀번호를 한 번 확인합니다.
-// 비밀번호는 이 탭을 닫을 때까지만 기억합니다(CRM 로그인과 같은 방식).
+// 비밀번호는 저장하지 않고, 확인 후 받은 출입증만 이 탭을 닫을 때까지 기억합니다(CRM 로그인과 같은 방식).
 const REPORT_API='https://remaup-crm.vercel.app/api';
 const REPORT_TOKEN_KEY='rmu_report_token';
 
@@ -1875,23 +1888,39 @@ function askReportPassword(wrong){
   });
 }
 
-// 서버 호출. 비밀번호가 없거나 틀리면 입력 창을 띄움 (틀리면 한 번 더 물어봄)
+// 비밀번호를 서버에 한 번 확인하고 출입증(토큰)을 받음. 비밀번호 자체는 어디에도 저장하지 않음
+// 돌려주는 값: 출입증, 비밀번호가 틀리면 빈 값
+async function reportLogin(wrong){
+  const pw=await askReportPassword(wrong);
+  if(!pw){ const err=new Error('취소했습니다'); err.cancelled=true; throw err; }
+  const res=await fetch(REPORT_API+'/auth',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({password:pw})
+  });
+  if(res.status===401) return '';
+  const j=await res.json();
+  if(!j.ok||!j.token) throw new Error(j.error||'확인하지 못했습니다');
+  setReportToken(j.token);
+  return j.token;
+}
+
+// 서버 호출. 출입증이 없거나 만료됐으면 비밀번호 창을 띄움 (틀리면 다시 물어봄)
 async function reportApi(action,body){
   let token=getReportToken();
-  for(let attempt=0;attempt<3;attempt++){
+  let wrong=false;
+  for(let attempt=0;attempt<4;attempt++){
     if(!token){
-      token=await askReportPassword(attempt>0);
-      if(!token){ const err=new Error('취소했습니다'); err.cancelled=true; throw err; }
+      token=await reportLogin(wrong);
+      if(!token){ wrong=true; continue; }
     }
     const res=await fetch(REPORT_API+'/mreport',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-auth-token':token},
       body:JSON.stringify(Object.assign({action},body||{}))
     });
-    if(res.status===401){ setReportToken(''); token=''; continue; }
-    const j=await res.json();
-    setReportToken(token);
-    return j;
+    if(res.status===401){ setReportToken(''); token=''; wrong=false; continue; }
+    return await res.json();
   }
   throw new Error('비밀번호가 맞지 않습니다');
 }
@@ -1923,18 +1952,18 @@ function restoreFormData(data){
 async function saveReport(){
   const name=val('i-name');
   const month=val('i-report-month');
-  if(!name){ alert('병원명을 먼저 입력해주세요.'); return; }
-  if(!month){ alert('보고 월을 먼저 입력해주세요.'); return; }
+  if(!name){ showToast('병원명을 먼저 입력해주세요','error'); document.getElementById('i-name').focus(); return; }
+  if(!month){ showToast('보고 월을 먼저 입력해주세요','error'); document.getElementById('i-report-month').focus(); return; }
   const btn=document.getElementById('btn-save-report');
   const orig=btn.textContent;
   btn.textContent='저장 중...'; btn.disabled=true;
   try{
     const data=collectFormData();
     const j=await reportApi('save',{name,month,data});
-    if(j.ok){ btn.textContent='✓ 저장됨!'; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},1500); }
-    else{ alert('저장 실패: '+(j.error||'')); btn.textContent=orig; btn.disabled=false; }
+    if(j.ok){ if(window.__clearDirty) window.__clearDirty(); btn.textContent='✓ 저장됨!'; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},1500); }
+    else{ showToast('저장하지 못했습니다: '+(j.error||''),'error'); btn.textContent=orig; btn.disabled=false; }
   }catch(e){
-    if(!e.cancelled) alert('저장 실패: '+e.message);
+    if(!e.cancelled) showToast('저장하지 못했습니다: '+e.message,'error');
     btn.textContent=orig; btn.disabled=false;
   }
 }
@@ -1974,9 +2003,11 @@ async function loadReport(key){
     const j=await reportApi('load',{key});
     if(j.ok&&j.report){
       restoreFormData(j.report.data);
+      if(window.__clearDirty) window.__clearDirty();
       document.getElementById('rl-overlay').classList.remove('show');
-    }else{ alert('불러오기 실패: '+(j.error||'')); }
-  }catch(e){ if(!e.cancelled) alert('불러오기 실패: '+e.message); }
+      showToast('불러왔습니다','success');
+    }else{ showToast('불러오지 못했습니다: '+(j.error||''),'error'); }
+  }catch(e){ if(!e.cancelled) showToast('불러오지 못했습니다: '+e.message,'error'); }
 }
 
 // 삭제
@@ -1985,11 +2016,17 @@ async function removeReport(key,name,month){
   try{
     const j=await reportApi('remove',{key});
     if(j.ok){ openReportList(); }
-    else{ alert('삭제 실패: '+(j.error||'')); }
-  }catch(e){ if(!e.cancelled) alert('삭제 실패: '+e.message); }
+    else{ showToast('지우지 못했습니다: '+(j.error||''),'error'); }
+  }catch(e){ if(!e.cancelled) showToast('지우지 못했습니다: '+e.message,'error'); }
 }
 
 document.getElementById('btn-save-report').addEventListener('click',saveReport);
+// 출력할 페이지 수 표시
+(function(){
+  function upd(){ var all=document.querySelectorAll('.pg-toggle'); var on=document.querySelectorAll('.pg-toggle:checked').length; var el=document.getElementById('pg-count'); if(el) el.textContent = on===all.length ? all.length+'쪽 모두 출력' : all.length+'쪽 중 '+on+'쪽 출력'; }
+  document.querySelectorAll('.pg-toggle').forEach(function(cb){ cb.addEventListener('change',upd); });
+  upd();
+})();
 document.getElementById('btn-open-report').addEventListener('click',openReportList);
 document.getElementById('rl-close').addEventListener('click',()=>document.getElementById('rl-overlay').classList.remove('show'));
 document.getElementById('rl-overlay').addEventListener('click',(e)=>{if(e.target.id==='rl-overlay')document.getElementById('rl-overlay').classList.remove('show');});
@@ -2006,6 +2043,17 @@ document.getElementById('rl-overlay').addEventListener('click',(e)=>{if(e.target
       else pg.classList.add('pg-hidden');
     });
   });
+})();
+</script>
+<script>
+// 입력한 내용이 있을 때 실수로 탭을 닫거나 새로고침하면 한 번 물어봄
+(function(){
+  var dirty=false;
+  var c=document.querySelector('.form-content');
+  if(!c) return;
+  c.addEventListener('input',function(){ dirty=true; });
+  window.__clearDirty=function(){ dirty=false; };
+  window.addEventListener('beforeunload',function(e){ if(!dirty) return; e.preventDefault(); e.returnValue=''; });
 })();
 </script>
 </body>

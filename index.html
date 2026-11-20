@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>리마업 - 병원 블로그 진단 리포트 생성기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b2554'/%3E%3Ctext x='32' y='46' font-family='Arial,sans-serif' font-size='40' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 :root{--primary:#0056b3;--primary-light:#155dfc;--primary-dark:#003d80;--primary-bg:#e8f1fa;--primary-bg-light:#f4f8fd;--text:#1a2332;--text-mid:#475569;--text-light:#94a3b8;--border:#e2e8f0;--border-light:#f1f5f9;--bg:#f1f5f9;--success:#10b981;--warning:#f59e0b;--danger:#ef4444}
@@ -11,6 +12,7 @@
 body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased}
 .app{display:grid;grid-template-columns:460px 1fr;min-height:100vh}
 .sidebar{background:white;border-right:1px solid var(--border);height:100vh;overflow-y:auto;position:sticky;top:0}
+.sidebar,.preview-label,.rl-modal{--text-light:#64748b}
 .sidebar-header{padding:14px 24px 0 24px;background:white;position:sticky;top:0;z-index:10}
 .sidebar-header h1{font-size:16px;font-weight:700;color:var(--primary);margin:0 0 2px 0;letter-spacing:-0.02em}
 .sidebar-header p{font-size:12px;color:var(--text-light);margin:0 0 12px 0}
@@ -207,13 +209,13 @@ body{background:white}
 <div class="app">
 <aside class="sidebar">
 <div class="sidebar-header">
-<h1>리마업 진단 리포트 v4 · 영업용</h1>
-<p>12페이지 영업용 PDF · 자동 채우기 강화</p>
+<h1>리마업 블로그 진단 리포트</h1>
+<p>12페이지 PDF · 플레이스 번호로 자동 채우기</p>
 </div>
 
 <div class="tab-bar" style="padding:0 24px;background:white;">
 <a href="index.html" class="active">진단 리포트</a>
-<a href="report.html">월간 보고서</a>
+<a href="report.html">월간 성과 보고서</a>
 </div>
 
 <div class="form-content">
@@ -901,6 +903,17 @@ document.getElementById('btn-fill-comp').addEventListener('click',autoFillCompet
 document.getElementById('btn-fill-problems').addEventListener('click',autoFillProblems);
 document.getElementById('btn-fill-solutions').addEventListener('click',autoFillSolutions);
 updatePreview();
+</script>
+<script>
+// 입력한 내용이 있을 때 실수로 탭을 닫거나 새로고침하면 한 번 물어봄
+(function(){
+  var dirty=false;
+  var c=document.querySelector('.form-content');
+  if(!c) return;
+  c.addEventListener('input',function(){ dirty=true; });
+  window.__clearDirty=function(){ dirty=false; };
+  window.addEventListener('beforeunload',function(e){ if(!dirty) return; e.preventDefault(); e.returnValue=''; });
+})();
 </script>
 </body>
 </html>
