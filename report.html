@@ -248,6 +248,14 @@ body{background:white}
 .rl-item-del{background:none;border:none;color:var(--danger,#dc2626);cursor:pointer;font-size:16px;opacity:.6;padding:4px 8px}
 .rl-item-del:hover{opacity:1}
 .rl-empty{text-align:center;color:var(--text-light);padding:30px;font-size:13px}
+.pw-overlay{z-index:1100}
+.pw-modal{max-width:360px}
+.pw-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:12px;margin:0}
+.pw-msg{font-size:12.5px;color:var(--text-mid);margin:0;line-height:1.5}
+.pw-msg.err{color:var(--danger,#dc2626);font-weight:600}
+#pw-input{padding:11px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text)}
+#pw-input:focus{outline:none;border-color:var(--primary)}
+.pw-body .save-btn{flex:none;padding:11px;font-size:13px}
 
 .pg-select-title{font-size:12px;font-weight:700;color:var(--text-mid);margin:14px 0 6px}
 .pg-select{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:12px;padding:12px 14px;background:#f1f5f9;border-radius:8px}
@@ -1816,9 +1824,77 @@ updatePreview();
 <div class="rl-list" id="rl-list"><div class="rl-empty">불러오는 중...</div></div>
 </div>
 </div>
+<div class="rl-overlay pw-overlay" id="pw-overlay">
+<div class="rl-modal pw-modal">
+<div class="rl-head"><h3>CRM 비밀번호 확인</h3><button type="button" class="rl-close" id="pw-close">×</button></div>
+<form class="pw-body" id="pw-form" autocomplete="off">
+<p class="pw-msg" id="pw-msg">보고서 저장·불러오기는 CRM 비밀번호가 필요합니다.</p>
+<input type="password" id="pw-input" placeholder="CRM 비밀번호" autocomplete="off">
+<button type="submit" class="save-btn">확인</button>
+</form>
+</div>
+</div>
 
 <script>
 // ===== 보고서 저장/불러오기 (서버) =====
+// 저장소는 리마업 CRM 서버에 있습니다. 병원 자료라서 CRM 비밀번호를 한 번 확인합니다.
+// 비밀번호는 이 탭을 닫을 때까지만 기억합니다(CRM 로그인과 같은 방식).
+const REPORT_API='https://remaup-crm.vercel.app/api';
+const REPORT_TOKEN_KEY='rmu_report_token';
+
+function rlEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function getReportToken(){ try{ return sessionStorage.getItem(REPORT_TOKEN_KEY)||''; }catch(e){ return ''; } }
+function setReportToken(t){ try{ if(t) sessionStorage.setItem(REPORT_TOKEN_KEY,t); else sessionStorage.removeItem(REPORT_TOKEN_KEY); }catch(e){} }
+
+// 비밀번호 입력 창을 띄우고, 입력한 값을 돌려줌 (닫으면 빈 값)
+function askReportPassword(wrong){
+  return new Promise(resolve=>{
+    const overlay=document.getElementById('pw-overlay');
+    const form=document.getElementById('pw-form');
+    const input=document.getElementById('pw-input');
+    const msg=document.getElementById('pw-msg');
+    const closeBtn=document.getElementById('pw-close');
+    msg.textContent=wrong?'비밀번호가 맞지 않습니다. 다시 입력해주세요.':'보고서 저장·불러오기는 CRM 비밀번호가 필요합니다.';
+    msg.classList.toggle('err',!!wrong);
+    input.value='';
+    overlay.classList.add('show');
+    setTimeout(()=>input.focus(),50);
+    function done(value){
+      overlay.classList.remove('show');
+      form.removeEventListener('submit',onSubmit);
+      closeBtn.removeEventListener('click',onCancel);
+      input.value='';
+      resolve(value);
+    }
+    function onSubmit(e){ e.preventDefault(); const v=input.value.trim(); if(v) done(v); }
+    function onCancel(){ done(''); }
+    form.addEventListener('submit',onSubmit);
+    closeBtn.addEventListener('click',onCancel);
+  });
+}
+
+// 서버 호출. 비밀번호가 없거나 틀리면 입력 창을 띄움 (틀리면 한 번 더 물어봄)
+async function reportApi(action,body){
+  let token=getReportToken();
+  for(let attempt=0;attempt<3;attempt++){
+    if(!token){
+      token=await askReportPassword(attempt>0);
+      if(!token){ const err=new Error('취소했습니다'); err.cancelled=true; throw err; }
+    }
+    const res=await fetch(REPORT_API+'/mreport',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-auth-token':token},
+      body:JSON.stringify(Object.assign({action},body||{}))
+    });
+    if(res.status===401){ setReportToken(''); token=''; continue; }
+    const j=await res.json();
+    setReportToken(token);
+    return j;
+  }
+  throw new Error('비밀번호가 맞지 않습니다');
+}
 
 // form-content 안의 모든 입력 필드를 {id: value}로 수집
 function collectFormData(){
@@ -1854,15 +1930,13 @@ async function saveReport(){
   btn.textContent='저장 중...'; btn.disabled=true;
   try{
     const data=collectFormData();
-    const res=await fetch('/api/report-save',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,month,data})
-    });
-    const j=await res.json();
+    const j=await reportApi('save',{name,month,data});
     if(j.ok){ btn.textContent='✓ 저장됨!'; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},1500); }
     else{ alert('저장 실패: '+(j.error||'')); btn.textContent=orig; btn.disabled=false; }
-  }catch(e){ alert('저장 실패: '+e.message); btn.textContent=orig; btn.disabled=false; }
+  }catch(e){
+    if(!e.cancelled) alert('저장 실패: '+e.message);
+    btn.textContent=orig; btn.disabled=false;
+  }
 }
 
 // 목록 열기
@@ -1872,8 +1946,7 @@ async function openReportList(){
   overlay.classList.add('show');
   list.innerHTML='<div class="rl-empty">불러오는 중...</div>';
   try{
-    const res=await fetch('/api/report-list');
-    const j=await res.json();
+    const j=await reportApi('list',{});
     if(!j.ok){ list.innerHTML='<div class="rl-empty">목록을 불러오지 못했습니다</div>'; return; }
     if(!j.reports||j.reports.length===0){ list.innerHTML='<div class="rl-empty">저장된 보고서가 없습니다</div>'; return; }
     list.innerHTML='';
@@ -1882,40 +1955,38 @@ async function openReportList(){
       item.className='rl-item';
       const d=new Date(r.savedAt);
       const dateStr=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} 저장`;
-      item.innerHTML=`<div class="rl-item-info"><span class="rl-item-name">${r.name} · ${r.month}</span><span class="rl-item-meta">${dateStr}</span></div><button type="button" class="rl-item-del" title="삭제">🗑</button>`;
+      item.innerHTML=`<div class="rl-item-info"><span class="rl-item-name">${rlEsc(r.name)} · ${rlEsc(r.month)}</span><span class="rl-item-meta">${dateStr}</span></div><button type="button" class="rl-item-del" title="삭제">🗑</button>`;
       // 클릭 → 불러오기
       item.querySelector('.rl-item-info').addEventListener('click',()=>loadReport(r.key));
       // 삭제
       item.querySelector('.rl-item-del').addEventListener('click',(e)=>{e.stopPropagation();removeReport(r.key,r.name,r.month);});
       list.appendChild(item);
     });
-  }catch(e){ list.innerHTML='<div class="rl-empty">오류: '+e.message+'</div>'; }
+  }catch(e){
+    if(e.cancelled){ overlay.classList.remove('show'); return; }
+    list.innerHTML='<div class="rl-empty">오류: '+rlEsc(e.message)+'</div>';
+  }
 }
 
 // 불러오기
 async function loadReport(key){
   try{
-    const res=await fetch('/api/report-load?key='+encodeURIComponent(key));
-    const j=await res.json();
+    const j=await reportApi('load',{key});
     if(j.ok&&j.report){
       restoreFormData(j.report.data);
       document.getElementById('rl-overlay').classList.remove('show');
     }else{ alert('불러오기 실패: '+(j.error||'')); }
-  }catch(e){ alert('불러오기 실패: '+e.message); }
+  }catch(e){ if(!e.cancelled) alert('불러오기 실패: '+e.message); }
 }
 
 // 삭제
 async function removeReport(key,name,month){
   if(!confirm(`"${name} · ${month}" 보고서를 삭제할까요?`)) return;
   try{
-    const res=await fetch('/api/report-remove',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({key})
-    });
-    const j=await res.json();
+    const j=await reportApi('remove',{key});
     if(j.ok){ openReportList(); }
     else{ alert('삭제 실패: '+(j.error||'')); }
-  }catch(e){ alert('삭제 실패: '+e.message); }
+  }catch(e){ if(!e.cancelled) alert('삭제 실패: '+e.message); }
 }
 
 document.getElementById('btn-save-report').addEventListener('click',saveReport);
